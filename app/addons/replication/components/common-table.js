@@ -18,6 +18,7 @@ import {removeCredentialsFromUrl} from '../api';
 import Components from "../../components/react-components";
 import Helpers from '../../../helpers';
 import FauxtonAPI from "../../../core/api";
+import utils from '../../../core/utils';
 
 const { ToolbarButton } = Components;
 
@@ -41,7 +42,7 @@ export const formatUrl = (url) => {
   }
   const root = Helpers.getRootUrl();
   encoded = getDbNameFromUrl(urlObj, root);
-  if (url.indexOf(window.location.hostname) > -1) {
+  if (utils.urlHasSameHost(window.location.host, urlObj)) {
     return (
       <span>
         {root}

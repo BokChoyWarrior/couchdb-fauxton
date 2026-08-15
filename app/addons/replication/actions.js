@@ -16,6 +16,7 @@ import ActionTypes from './actiontypes';
 import Helpers from './helpers';
 import MainHelper from '../../helpers';
 import Constants from './constants';
+import utils from '../../core/utils';
 import {
   supportNewApi,
   createReplicationDoc,
@@ -344,15 +345,17 @@ export const getReplicationStateFrom = (id) => dispatch => {
       const stateDoc = {
         replicationDocName: doc._id,
         replicationType: doc.continuous ? Constants.REPLICATION_TYPE.CONTINUOUS : Constants.REPLICATION_TYPE.ONE_TIME,
+        replicationTarget: ""
       };
 
       const sourceUrl = _.isObject(doc.source) ? doc.source.url : doc.source;
       const targetUrl = _.isObject(doc.target) ? doc.target.url : doc.target;
 
-      if (sourceUrl.indexOf(window.location.hostname) > -1) {
-        const url = new URL(sourceUrl);
+      const isLocalSource = utils.urlHasSameHost(window.location.host, new URL(sourceUrl));
+      if (isLocalSource) {
+        const sourceUrlObj = new URL(sourceUrl);
         stateDoc.replicationSource = Constants.REPLICATION_SOURCE.LOCAL;
-        stateDoc.localSource = decodeURIComponent(url.pathname.slice(1));
+        stateDoc.localSource = decodeURIComponent(sourceUrlObj.pathname.slice(1));
       } else {
         stateDoc.replicationSource = Constants.REPLICATION_SOURCE.REMOTE;
         stateDoc.remoteSource = decodeFullUrl(sourceUrl);
@@ -361,10 +364,11 @@ export const getReplicationStateFrom = (id) => dispatch => {
       stateDoc.sourceAuthType = sourceAuth.type;
       stateDoc.sourceAuth = sourceAuth.creds;
 
-      if (targetUrl.indexOf(window.location.hostname) > -1) {
-        const url = new URL(targetUrl);
+      const isLocalTarget = utils.urlHasSameHost(window.location.host, new URL(targetUrl));
+      if (isLocalTarget) {
+        const targetUrlObj = new URL(targetUrl);
         stateDoc.replicationTarget = Constants.REPLICATION_TARGET.EXISTING_LOCAL_DATABASE;
-        stateDoc.localTarget = decodeURIComponent(url.pathname.slice(1));
+        stateDoc.localTarget = decodeURIComponent(targetUrlObj.pathname.slice(1));
       } else {
         stateDoc.replicationTarget = Constants.REPLICATION_TARGET.EXISTING_REMOTE_DATABASE;
         stateDoc.remoteTarget = decodeFullUrl(targetUrl);

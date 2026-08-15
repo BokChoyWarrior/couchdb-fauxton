@@ -141,6 +141,20 @@ const utils = {
     const tmpElement = document.createElement('div');
     tmpElement.innerHTML = str;
     return tmpElement.textContent || tmpElement.innerText;
+  },
+
+  /**
+   *
+   * @param {string} host to check (including port, subdomain) e.g. `foo.bar.com:5599`
+   * @param {URL}
+   * @returns whether `url` originates from `host`
+   */
+  urlHasSameHost: function (host, url) {
+    if (!url || !host) {
+      return false;
+    }
+    return host === url.host;
+
   }
 };
 

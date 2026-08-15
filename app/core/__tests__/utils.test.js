@@ -99,7 +99,6 @@ describe('Utils', () => {
         expect(utils.stripHTML(item.html)).toBe(item.text);
       });
     });
-
   });
 
   describe('queryParams', () => {
@@ -111,6 +110,62 @@ describe('Utils', () => {
       })).toBe(
         'startkey=%22_design%2Fapp%22&endkey=%22_design%2Fapp%E9%A6%99%22&limit=30'
       );
+    });
+  });
+
+  describe("urlHasSameHost", () => {
+    const basicDbName = "abc";
+    const basicUrlString = `https://helloabc.company.co.uk:1234/${basicDbName}`;
+    const basicUrl = new URL(basicUrlString);
+    const basicUrlHost = basicUrl.host;
+
+    it("returns true when URL host matches host", () => {
+      expect(utils.urlHasSameHost(basicUrlHost, basicUrl)).toBe(true);
+    });
+
+    it("returns false when URL host does not match", () => {
+      expect(utils.urlHasSameHost("http://remote.example.com:5984/mydb", basicUrl)).toBe(false);
+      expect(utils.urlHasSameHost("http://192.168.1.10:5984/mydb", basicUrl)).toBe(false);
+    });
+
+    it("returns false for null/undefined", () => {
+      expect(utils.urlHasSameHost(null, basicUrl)).toBe(false);
+      expect(utils.urlHasSameHost("dev", null)).toBe(false);
+      expect(utils.urlHasSameHost(undefined, basicUrl)).toBe(false);
+      expect(utils.urlHasSameHost("dev", undefined)).toBe(false);
+      expect(utils.urlHasSameHost(undefined, undefined)).toBe(false);
+      expect(utils.urlHasSameHost(null, null)).toBe(false);
+    });
+
+    it("returns false for non-URLs", () => {
+      expect(utils.urlHasSameHost("dev.com", 1)).toBe(false);
+      expect(utils.urlHasSameHost("dev.com", "dev.com")).toBe(false);
+    });
+
+    it("does not false-positive on host substring matches", () => {
+      expect(utils.urlHasSameHost("notes", new URL("http://notes.example.com:5984/mydb")), ).toBe(false);
+      expect(utils.urlHasSameHost("dev-server", new URL("http://dev-server.example.com:5984/mydb")), ).toBe(false);
+      expect(utils.urlHasSameHost("dev", new URL("http://staging-dev.example.com:5984/mydb"))).toBe(false);
+    });
+
+    it("handles localhost correctly", () => {
+      expect(utils.urlHasSameHost("localhost:1234", new URL("http://localhost:1234/mydb"))).toBe(true);
+      expect(utils.urlHasSameHost("localhost", new URL("http://localhost:5984/mydb"))).toBe(false);
+      expect(utils.urlHasSameHost("localhost", new URL("http://127.0.0.1:5984/mydb"))).toBe(false);
+    });
+
+    it("handles IPV4 correctly", () => {
+      expect(utils.urlHasSameHost("192.168.1.23", new URL("http://192.168.1.23/mydb"))).toBe(true);
+      expect(utils.urlHasSameHost("192.168.1.23", new URL("http://192.168.1.23:5984/mydb"))).toBe(false);
+      // doesn't mistake a url starting with what looks like an IPV4 address with a host
+      expect(utils.urlHasSameHost("1.1.1.1", new URL("http://1.1.1.1.com:5984/mydb")), ).toBe(false);
+      expect(utils.urlHasSameHost( "couchdb", new URL("http://couchdb-prod.example.com:5984/mydb"), "couchdb")).toBe(false);
+    });
+
+    it("does not match different hosts with similar substrings", () => {
+      expect(utils.urlHasSameHost("couchdb", new URL("http://couchdb:5984/mydb"), "couchdb")).toBe(false);
+      expect(utils.urlHasSameHost("couchdb", new URL("http://my-couchdb.example.com:5984/mydb"))).toBe(false);
+      expect(utils.urlHasSameHost("couchdb", new URL("http://couchdb-prod.example.com:5984/mydb"))).toBe(false);
     });
   });
 });

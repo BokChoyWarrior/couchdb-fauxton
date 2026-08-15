@@ -299,4 +299,85 @@ describe("Replication Actions", () => {
       setPageLimit(pageLimit)(dispatch);
     });
   });
+
+  describe('getReplicationStateFrom - URL classification', () => {
+    afterEach(() => {
+      fetchMock.reset();
+    });
+
+    it('classifies remote URLs as REMOTE (hostname differs from window.location)', (done) => {
+      // In jsdom, window.location.hostname is typically 'localhost' or similar
+      const remoteDoc = {
+        "_id": "remote-rep-1",
+        "_rev": "1-abc123",
+        "source": {
+          "headers": {
+            "Authorization": "Basic dGVzdGVyOnRlc3RlcnBhc3M="
+          },
+          "url": "http://remote-couchdb.example.com:5984/animaldb"
+        },
+        "target": {
+          "headers": {
+            "Authorization": "Basic dGVzdGVyOnRlc3RlcnBhc3M="
+          },
+          "url": "http://another-remote.example.com:5984/backupdb"
+        },
+        "continuous": false,
+        "create_target": true,
+        "owner": "tester",
+        "_replication_id": "90ff5a45623aa6821a6b0c20f5d3b5e8"
+      };
+
+      fetchMock.getOnce('./_replicator/remote-rep-1', remoteDoc);
+
+      const dispatch = ({type, options}) => {
+        if (ActionTypes.REPLICATION_SET_STATE_FROM_DOC === type) {
+          // Remote URLs should be classified as REMOTE since their hostname differs
+          expect(options.replicationSource).toBe('REPLICATION_SOURCE_REMOTE');
+          expect(options.remoteSource).toBe('http://remote-couchdb.example.com:5984/animaldb');
+          expect(options.replicationTarget).toBe('REPLICATION_TARGET_EXISTING_REMOTE_DATABASE');
+          expect(options.remoteTarget).toBe('http://another-remote.example.com:5984/backupdb');
+          done();
+        }
+      };
+
+      getReplicationStateFrom('remote-rep-1')(dispatch);
+    });
+
+    it('does not false-positive on hostname substring matches', (done) => {
+      // Regression test: hostnames containing "dev" as substring should NOT match "dev"
+      const doc = {
+        "_id": "substring-test",
+        "_rev": "1-ghi789",
+        "source": {
+          "headers": {
+            "Authorization": "Basic dGVzdGVyOnRlc3RlcnBhc3M="
+          },
+          "url": "http://mydev-couchdb.example.com:5984/source-db"
+        },
+        "target": {
+          "headers": {
+            "Authorization": "Basic dGVzdGVyOnRlc3RlcnBhc3M="
+          },
+          "url": "http://devops-remote.example.com:5984/target-db"
+        },
+        "continuous": false,
+        "create_target": true,
+        "owner": "tester",
+        "_replication_id": "90ff5a45623aa6821a6b0c20f5d3b5e8"
+      };
+
+      const dispatch = ({type, options}) => {
+        if (ActionTypes.REPLICATION_SET_STATE_FROM_DOC === type) {
+          // Both should be REMOTE (old bug would classify them as LOCAL due to substring match)
+          expect(options.replicationSource).toBe('REPLICATION_SOURCE_REMOTE');
+          expect(options.replicationTarget).toBe('REPLICATION_TARGET_EXISTING_REMOTE_DATABASE');
+          done();
+        }
+      };
+
+      fetchMock.getOnce('./_replicator/substring-test', doc);
+      getReplicationStateFrom('substring-test')(dispatch);
+    });
+  });
 });
