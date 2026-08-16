@@ -334,56 +334,48 @@ const getTargetDatabasePartitioned = (createTargetParams) => {
   return false;
 };
 
+const processEndpoint = (endpoint) => {
+  const url = _.isObject(endpoint) ? endpoint.url : endpoint;
+  const urlObj = new URL(url);
+  const isLocal = utils.urlHasSameHost(window.location.host, urlObj);
+  const auth = getAuthTypeAndCredentials(endpoint);
+
+  return {
+    isLocal,
+    dbName: decodeURIComponent(urlObj.pathname.slice(1)),
+    fullUrl: decodeFullUrl(url),
+    authType: auth.type,
+    auth: auth.creds
+  };
+};
+
+const buildStateDoc = (doc) => {
+  const source = processEndpoint(doc.source);
+  const target = processEndpoint(doc.target);
+
+  return {
+    replicationDocName: doc._id,
+    replicationType: doc.continuous ? Constants.REPLICATION_TYPE.CONTINUOUS : Constants.REPLICATION_TYPE.ONE_TIME,
+    replicationSource: source.isLocal ? Constants.REPLICATION_SOURCE.LOCAL : Constants.REPLICATION_SOURCE.REMOTE,
+    sourceAuthType: source.authType,
+    sourceAuth: source.auth,
+    ...(source.isLocal ? { localSource: source.dbName } : { remoteSource: source.fullUrl }),
+    replicationTarget: target.isLocal ? Constants.REPLICATION_TARGET.EXISTING_LOCAL_DATABASE : Constants.REPLICATION_TARGET.EXISTING_REMOTE_DATABASE,
+    targetAuthType: target.authType,
+    targetAuth: target.auth,
+    ...(target.isLocal ? { localTarget: target.dbName } : { remoteTarget: target.fullUrl }),
+    targetDatabasePartitioned: getTargetDatabasePartitioned(doc.create_target_params)
+  };
+};
+
 export const getReplicationStateFrom = (id) => dispatch => {
-  dispatch({
-    type: ActionTypes.REPLICATION_FETCHING_FORM_STATE
-  });
+  dispatch({ type: ActionTypes.REPLICATION_FETCHING_FORM_STATE });
 
   const url = MainHelper.getServerUrl(`/_replicator/${encodeURIComponent(id)}`);
   get(url)
     .then((doc) => {
-      const stateDoc = {
-        replicationDocName: doc._id,
-        replicationType: doc.continuous ? Constants.REPLICATION_TYPE.CONTINUOUS : Constants.REPLICATION_TYPE.ONE_TIME,
-        replicationTarget: ""
-      };
-
-      const sourceUrl = _.isObject(doc.source) ? doc.source.url : doc.source;
-      const targetUrl = _.isObject(doc.target) ? doc.target.url : doc.target;
-
-      const isLocalSource = utils.urlHasSameHost(window.location.host, new URL(sourceUrl));
-      if (isLocalSource) {
-        const sourceUrlObj = new URL(sourceUrl);
-        stateDoc.replicationSource = Constants.REPLICATION_SOURCE.LOCAL;
-        stateDoc.localSource = decodeURIComponent(sourceUrlObj.pathname.slice(1));
-      } else {
-        stateDoc.replicationSource = Constants.REPLICATION_SOURCE.REMOTE;
-        stateDoc.remoteSource = decodeFullUrl(sourceUrl);
-      }
-      const sourceAuth = getAuthTypeAndCredentials(doc.source);
-      stateDoc.sourceAuthType = sourceAuth.type;
-      stateDoc.sourceAuth = sourceAuth.creds;
-
-      const isLocalTarget = utils.urlHasSameHost(window.location.host, new URL(targetUrl));
-      if (isLocalTarget) {
-        const targetUrlObj = new URL(targetUrl);
-        stateDoc.replicationTarget = Constants.REPLICATION_TARGET.EXISTING_LOCAL_DATABASE;
-        stateDoc.localTarget = decodeURIComponent(targetUrlObj.pathname.slice(1));
-      } else {
-        stateDoc.replicationTarget = Constants.REPLICATION_TARGET.EXISTING_REMOTE_DATABASE;
-        stateDoc.remoteTarget = decodeFullUrl(targetUrl);
-      }
-      const targetAuth = getAuthTypeAndCredentials(doc.target);
-      stateDoc.targetAuthType = targetAuth.type;
-      stateDoc.targetAuth = targetAuth.creds;
-
-      stateDoc.targetDatabasePartitioned = getTargetDatabasePartitioned(doc.create_target_params);
-
-      dispatch({
-        type: ActionTypes.REPLICATION_SET_STATE_FROM_DOC,
-        options: stateDoc
-      });
-
+      const stateDoc = buildStateDoc(doc);
+      dispatch({ type: ActionTypes.REPLICATION_SET_STATE_FROM_DOC, options: stateDoc });
     })
     .catch(error => {
       FauxtonAPI.addNotification({
