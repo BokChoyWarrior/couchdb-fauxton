@@ -8,6 +8,7 @@ on:
       - main
 jobs:
   run-unit-tests:
+    if: github.triggering_actor == github.repository_owner
     name: Run unit tests
     runs-on: self-hosted
     steps:
@@ -25,6 +26,7 @@ jobs:
     - name: Run unit tests
       run: npm run test
   run-e2e-tests:
+    if: github.triggering_actor == github.repository_owner
     name: Run e2e tests
     runs-on: self-hosted
     needs: [ run-unit-tests ]
