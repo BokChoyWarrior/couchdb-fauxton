@@ -1,4 +1,3 @@
-runs-on: self-hosted
 name: CI
 on:
   push:
@@ -10,7 +9,7 @@ on:
 jobs:
   run-unit-tests:
     name: Run unit tests
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-node@v4
@@ -27,7 +26,7 @@ jobs:
       run: npm run test
   run-e2e-tests:
     name: Run e2e tests
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [ run-unit-tests ]
     strategy:
       matrix:
