@@ -359,15 +359,25 @@ const buildStateFromDoc = (doc) => {
     replicationDocName: doc._id,
     replicationType: doc.continuous ? Constants.REPLICATION_TYPE.CONTINUOUS : Constants.REPLICATION_TYPE.ONE_TIME,
     // source
-    replicationSource: source.isLocal ? Constants.REPLICATION_SOURCE.LOCAL : Constants.REPLICATION_SOURCE.REMOTE,
+    ...(source.isLocal ? {
+      replicationSource: Constants.REPLICATION_SOURCE.LOCAL,
+      localSource: source.dbName,
+    } : {
+      replicationSource: Constants.REPLICATION_SOURCE.REMOTE,
+      remoteSource: source.fullUrl,
+    }),
     sourceAuthType: source.authType,
     sourceAuth: source.auth,
-    ...(source.isLocal ? { localSource: source.dbName } : { remoteSource: source.fullUrl }),
     // target
-    replicationTarget: target.isLocal ? Constants.REPLICATION_TARGET.EXISTING_LOCAL_DATABASE : Constants.REPLICATION_TARGET.EXISTING_REMOTE_DATABASE,
+    ...(target.isLocal ? {
+      replicationTarget: Constants.REPLICATION_TARGET.EXISTING_LOCAL_DATABASE,
+      localTarget: target.dbName,
+    } : {
+      replicationTarget: Constants.REPLICATION_TARGET.EXISTING_REMOTE_DATABASE,
+      remoteTarget: target.fullUrl,
+    }),
     targetAuthType: target.authType,
     targetAuth: target.auth,
-    ...(target.isLocal ? { localTarget: target.dbName } : { remoteTarget: target.fullUrl }),
     targetDatabasePartitioned: getTargetDatabasePartitioned(doc.create_target_params)
   };
 };
